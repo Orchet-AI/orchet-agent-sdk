@@ -13,5 +13,5 @@ export * from "./trips.js";
 export * from "./health.js";
 export * from "./errors.js";
 export * from "./types.js";
-export declare const SDK_VERSION = "0.4.0";
+export declare const SDK_VERSION = "0.4.1";
 //# sourceMappingURL=index.d.ts.map

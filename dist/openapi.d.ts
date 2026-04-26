@@ -27,6 +27,10 @@ import type { CostTier } from "./types.js";
  *       x-lumo-pii-required: [name, email, payment_method_id]
  *       x-lumo-cancels: flight_cancel_booking
  *       x-lumo-compensation-kind: best-effort
+ *       x-lumo-reversibility: compensating
+ *       x-lumo-compensating-tool: flight_cancel_booking
+ *       x-lumo-compensating-inputs-template:
+ *         booking_id: "{{outputs.booking_id}}"
  *   /cancel:
  *     post:
  *       operationId: flight_cancel_booking
@@ -75,6 +79,24 @@ export interface LumoOperationExtensions {
      * doc comment for semantics. Defaults to `best-effort` on any cancel tool.
      */
     "x-lumo-compensation-kind"?: "perfect" | "best-effort" | "manual";
+    /**
+     * Declares how durable mission rollback should treat the operation after
+     * it succeeds. Absent values are interpreted conservatively by Lumo Core.
+     */
+    "x-lumo-reversibility"?: "reversible" | "compensating" | "irreversible";
+    /**
+     * operationId of the compensating action to call during mission rollback.
+     * This is intentionally separate from `x-lumo-cancels` so non-money tools
+     * can declare a compensation path too.
+     */
+    "x-lumo-compensating-tool"?: string;
+    /**
+     * Template rendered against the original step outputs before invoking the
+     * compensating tool. Supports simple `{{outputs.foo.bar}}` substitutions.
+     */
+    "x-lumo-compensating-inputs-template"?: Record<string, unknown>;
+    /** Optional time window after which compensation should not be attempted. */
+    "x-lumo-compensating-window-seconds"?: number;
 }
 export interface OpenApiDocument {
     openapi: string;
@@ -154,6 +176,17 @@ export interface ToolRoutingEntry {
      * partial-rollback warnings proactively. Only meaningful on cancel tools.
      */
     compensation_kind?: "perfect" | "best-effort" | "manual";
+    /**
+     * Durable mission rollback semantics for this operation. If absent, Lumo
+     * Core falls back to its conservative heuristics.
+     */
+    reversibility?: "reversible" | "compensating" | "irreversible";
+    /** operationId of the compensating action for this operation. */
+    compensating_tool?: string;
+    /** Template rendered against the forward step outputs for compensation. */
+    compensating_inputs_template?: Record<string, unknown>;
+    /** Optional compensation window in seconds from the forward step finish. */
+    compensating_window_seconds?: number;
 }
 export interface BridgeResult {
     tools: ClaudeTool[];

@@ -56,12 +56,17 @@ export function openApiToClaudeTools(agentId, doc) {
                 cancel_for: op["x-lumo-cancel-for"],
                 compensation_kind: op["x-lumo-compensation-kind"] ??
                     (op["x-lumo-cancel-for"] ? "best-effort" : undefined),
+                reversibility: op["x-lumo-reversibility"],
+                compensating_tool: op["x-lumo-compensating-tool"] ?? op["x-lumo-cancels"],
+                compensating_inputs_template: op["x-lumo-compensating-inputs-template"],
+                compensating_window_seconds: op["x-lumo-compensating-window-seconds"],
             };
         }
     }
     // Validate cancellation protocol — every money tool must declare a cancel,
     // every declared cancel must point back, within the same agent's doc.
     validateCancellationProtocol(agentId, routing);
+    validateRollbackProtocol(agentId, routing);
     return { tools, routing };
 }
 /**
@@ -107,6 +112,35 @@ function validateCancellationProtocol(agentId, routing) {
                 `Cancel tools must set \`false\` — the Saga runs rollback without ` +
                 `re-prompting the user (re-prompt would deadlock compound bookings ` +
                 `where an earlier leg has already committed).`);
+        }
+    }
+}
+/**
+ * Registry-load-time check for the durable-mission rollback contract. This is
+ * deliberately lighter than the money-tool cancellation protocol because the
+ * rollback fields are optional and backward-compatible. Once an operation
+ * declares `reversibility: compensating`, though, the referenced compensating
+ * operation must exist in the same OpenAPI document.
+ */
+function validateRollbackProtocol(agentId, routing) {
+    for (const entry of Object.values(routing)) {
+        if (entry.reversibility !== "compensating")
+            continue;
+        if (!entry.compensating_tool) {
+            throw new Error(`[${agentId}] Operation "${entry.operation_id}" declares ` +
+                `\`x-lumo-reversibility: compensating\` but does not declare ` +
+                `\`x-lumo-compensating-tool\` (or legacy \`x-lumo-cancels\`).`);
+        }
+        const compensatingTool = routing[entry.compensating_tool];
+        if (!compensatingTool) {
+            throw new Error(`[${agentId}] Operation "${entry.operation_id}" declares ` +
+                `\`x-lumo-compensating-tool: ${entry.compensating_tool}\`, but that ` +
+                `operationId is not exposed as a tool in this agent's OpenAPI.`);
+        }
+        if (compensatingTool.requires_confirmation !== false) {
+            throw new Error(`[${agentId}] Compensating tool "${compensatingTool.operation_id}" sets ` +
+                `\`x-lumo-requires-confirmation: ${compensatingTool.requires_confirmation}\`. ` +
+                `Rollback compensation must not require a second human confirmation.`);
         }
     }
 }
