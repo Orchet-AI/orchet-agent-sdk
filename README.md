@@ -1,4 +1,4 @@
-# @lumo/agent-sdk
+# @orchet/agent-sdk
 
 The contract every Lumo specialist agent implements, plus helpers the shell uses to consume it.
 
@@ -18,7 +18,7 @@ import {
   defineManifest,
   defineHealth,
   ConfirmationSummary,
-} from "@lumo/agent-sdk";
+} from "@orchet/agent-sdk";
 
 export const manifest = defineManifest({
   agent_id: "flight-agent",
@@ -34,7 +34,7 @@ Serve the manifest at `/.well-known/agent.json`, your OpenAPI at `/openapi.json`
 ## If you are working on the shell
 
 ```ts
-import { openApiToClaudeTools, evaluateConfirmation } from "@lumo/agent-sdk";
+import { openApiToClaudeTools, evaluateConfirmation } from "@orchet/agent-sdk";
 
 const tools = openApiToClaudeTools(agentOpenApiDoc);
 ```

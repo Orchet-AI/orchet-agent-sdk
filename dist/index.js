@@ -1,5 +1,5 @@
 /**
- * @lumo/agent-sdk
+ * @orchet/agent-sdk
  *
  * The contract every Lumo specialist agent implements.
  * See /lumo-agents-build-plan.md section 5 ("The Agent Contract") for the

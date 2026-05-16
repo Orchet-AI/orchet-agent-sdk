@@ -12,12 +12,12 @@ export declare const AgentSLASchema: z.ZodObject<{
     p95_latency_ms: z.ZodNumber;
     availability_target: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
-    p50_latency_ms: number;
     p95_latency_ms: number;
+    p50_latency_ms: number;
     availability_target: number;
 }, {
-    p50_latency_ms: number;
     p95_latency_ms: number;
+    p50_latency_ms: number;
     availability_target: number;
 }>;
 export declare const AgentUIManifestSchema: z.ZodObject<{
@@ -248,12 +248,12 @@ export declare const AgentManifestSchema: z.ZodObject<{
         p95_latency_ms: z.ZodNumber;
         availability_target: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
-        p50_latency_ms: number;
         p95_latency_ms: number;
+        p50_latency_ms: number;
         availability_target: number;
     }, {
-        p50_latency_ms: number;
         p95_latency_ms: number;
+        p50_latency_ms: number;
         availability_target: number;
     }>;
     /** Narrow list of PII fields the agent may be granted. */
@@ -463,8 +463,8 @@ export declare const AgentManifestSchema: z.ZodObject<{
     };
     health_url: string;
     sla: {
-        p50_latency_ms: number;
         p95_latency_ms: number;
+        p50_latency_ms: number;
         availability_target: number;
     };
     pii_scope: ("name" | "email" | "phone" | "address" | "dob" | "payment_method_id" | "passport" | "passport_optional" | "loyalty_numbers" | "traveler_profile")[];
@@ -522,8 +522,8 @@ export declare const AgentManifestSchema: z.ZodObject<{
     };
     health_url: string;
     sla: {
-        p50_latency_ms: number;
         p95_latency_ms: number;
+        p50_latency_ms: number;
         availability_target: number;
     };
     pii_scope: ("name" | "email" | "phone" | "address" | "dob" | "payment_method_id" | "passport" | "passport_optional" | "loyalty_numbers" | "traveler_profile")[];

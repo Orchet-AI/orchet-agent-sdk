@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | **Status** | Draft |
-| **Target SDK version** | `@lumo/agent-sdk@0.2.0` |
+| **Target SDK version** | `@orchet/agent-sdk@0.2.0` |
 | **Author** | Kalas + assistant |
 | **Created** | 2026-04-23 |
 | **Supersedes** | — |
