@@ -101,15 +101,16 @@ export const AgentConnectSchema = z.discriminatedUnion("model", [
             .min(1),
         /**
          * Env var name the Super Agent looks up for this agent's OAuth
-         * client_id and client_secret. Convention:
-         *   LUMO_<AGENT_ID_SHOUT>_CLIENT_ID / LUMO_<AGENT_ID_SHOUT>_CLIENT_SECRET
+         * client_id and client_secret. Conventions accepted:
+         *   - ORCHET_<AGENT_ID_SHOUT>_CLIENT_ID / ORCHET_<AGENT_ID_SHOUT>_CLIENT_SECRET   (preferred)
+         *   - LUMO_<AGENT_ID_SHOUT>_CLIENT_ID   / LUMO_<AGENT_ID_SHOUT>_CLIENT_SECRET     (legacy, supported until coordinated prod env-var rename)
          * Declared here so the orchestrator fails fast with a clear error
          * instead of a mysterious 401 at token-exchange time.
          */
-        client_id_env: z.string().regex(/^LUMO_[A-Z0-9_]+_CLIENT_ID$/),
+        client_id_env: z.string().regex(/^(ORCHET|LUMO)_[A-Z0-9_]+_CLIENT_ID$/),
         client_secret_env: z
             .string()
-            .regex(/^LUMO_[A-Z0-9_]+_CLIENT_SECRET$/)
+            .regex(/^(ORCHET|LUMO)_[A-Z0-9_]+_CLIENT_SECRET$/)
             .optional(),
         /**
          * Whether this client is confidential (secret required) or public
