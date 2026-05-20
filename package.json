@@ -86,7 +86,7 @@
     "url": "https://github.com/Orchet-AI/orchet-agent-sdk.git"
   },
   "publishConfig": {
-    "access": "restricted"
+    "access": "public"
   },
   "engines": {
     "node": ">=20.10.0"
