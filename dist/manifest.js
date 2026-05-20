@@ -135,6 +135,48 @@ export const AgentConnectSchema = z.discriminatedUnion("model", [
         model: z.literal("none"),
     }),
 ]);
+/**
+ * Payment-architecture declaration — introduced in SDK v0.6 to support
+ * Orchet's unified-checkout vision (one payment per trip, even when
+ * the trip spans multiple agents).
+ *
+ * Three modes are allowed today:
+ *
+ *   "agent_owned"      — agent collects payment via its own PG portal.
+ *                        Used when the upstream booking API atomically
+ *                        requires payment_id at booking-creation time
+ *                        (Lumo Rentals' /v1/bookings/{hash} requires
+ *                        razorPayPaymentId on the same call). Orchet
+ *                        sequences these legs one at a time — the user
+ *                        clicks "Pay leg 1 of 2" → confirmation → "Pay
+ *                        leg 2 of 2" in the chat thread.
+ *
+ *   "orchet_unified"   — agent only QUOTES + FINALIZES; Orchet collects
+ *                        ONE payment for the trip's total via its own
+ *                        PG account and disburses to each agent after
+ *                        capture. The agent exposes `*_quote_*` tools
+ *                        that return a QuoteToken (HMAC-signed amount +
+ *                        finalize_url + finalize_payload). This is the
+ *                        target architecture — best UX for multi-leg
+ *                        trips (Flight + Car + Hotel = one swipe).
+ *
+ *   "hybrid"           — agent supports BOTH. Exposes legacy single-leg
+ *                        booking tools (agent_owned) AND quote tools
+ *                        (orchet_unified). Orchet's dispatcher picks
+ *                        orchet_unified for multi-leg bundles and
+ *                        agent_owned for solo bookings (less ceremony).
+ *
+ * If unset, defaults to "agent_owned" — safest assumption for any new
+ * agent and matches the behavior of every pre-v0.6 agent in the
+ * marketplace. Switching to orchet_unified requires the agent to ALSO
+ * expose at least one tool whose name matches /_quote_|quote_booking/
+ * (validated at openapi-load time).
+ */
+export const AgentPaymentModeSchema = z.enum([
+    "agent_owned",
+    "orchet_unified",
+    "hybrid",
+]);
 export const AgentCapabilitiesSchema = z.object({
     /**
      * SDK semver the agent was built against. The shell refuses to register
@@ -157,6 +199,13 @@ export const AgentCapabilitiesSchema = z.object({
      * even before the first tool bridge is built.
      */
     implements_cancellation: z.boolean().default(false),
+    /**
+     * How this agent collects money. See {@link AgentPaymentModeSchema}.
+     * Defaulted to `agent_owned` so pre-v0.6 manifests parse unchanged
+     * and the orchestrator's trip-payment dispatcher treats them
+     * conservatively (sequential per-leg pay flow).
+     */
+    payment_mode: AgentPaymentModeSchema.default("agent_owned"),
 });
 export const AgentManifestSchema = z.object({
     agent_id: z.string().regex(/^[a-z][a-z0-9-]{2,31}$/),
