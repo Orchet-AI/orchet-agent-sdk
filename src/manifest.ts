@@ -2,7 +2,7 @@
  * Agent manifest types.
  *
  * Every specialist agent serves a manifest at `/.well-known/agent.json` that
- * conforms to {@link AgentManifest}. The shell polls manifests at boot to build
+ * conforms to {@link AgentManifest}. Orchet polls manifests at boot to build
  * its registry and re-validates on every deploy webhook.
  */
 
@@ -29,7 +29,7 @@ export const AgentUIManifestSchema = z.object({
 });
 
 /**
- * Self-declared contract version and capability flags. The shell reads this
+ * Self-declared contract version and capability flags. Orchet reads this
  * at `/.well-known/agent.json` load and fast-fails if the agent is missing
  * a capability the registry needs.
  *
@@ -38,27 +38,27 @@ export const AgentUIManifestSchema = z.object({
  * them keeps the top of the manifest stable.
  */
 /**
- * Connection block — introduced in SDK v0.4 to support the Lumo appstore.
+ * Connection block — introduced in SDK v0.4 to support the Orchet marketplace.
  *
  * Every agent that holds user-scoped state (a cart, an order history, a
- * saved payment method, a loyalty account) declares how a Lumo user
- * "connects" their identity to the agent. The Super Agent reads this
- * block when rendering the marketplace card ("Connect Food Agent") and
- * the router reads it to know whether to attach a user-scoped bearer
+ * saved payment method, a loyalty account) declares how an Orchet user
+ * "connects" their identity to the agent. Orchet reads this block when
+ * rendering the marketplace card ("Connect Food Agent") and the router
+ * reads it to know whether to attach a user-scoped bearer
  * token on each tool dispatch.
  *
  * Three models are allowed today:
  *
- *   "oauth2"    — the agent is an OAuth 2.1 Authorization Server. Lumo
+ *   "oauth2"    — the agent is an OAuth 2.1 Authorization Server. Orchet
  *                 kicks off the Authorization Code + PKCE flow, stores
  *                 the returned access/refresh tokens per user, and
  *                 attaches `Authorization: Bearer <access>` on every
- *                 tool call. This is the model every Lumo-built agent
+   *                 tool call. This is the model every Orchet-built agent
  *                 uses and the one third-party SaaS typically slots into.
  *
- *   "lumo_id"   — the agent delegates identity to Lumo. Lumo issues a
- *                 signed OIDC token per request; the agent trusts Lumo's
- *                 JWKS. Cheap for Lumo-native agents; doesn't work for
+ *   "lumo_id"   — the agent delegates identity to Orchet. Orchet issues a
+ *                 signed OIDC token per request; the agent trusts Orchet's
+ *                 JWKS. Cheap for Orchet-native agents; doesn't work for
  *                 third-party SaaS with pre-existing user bases.
  *
  *   "none"      — agent exposes only anonymous tools (e.g., a public
@@ -66,7 +66,7 @@ export const AgentUIManifestSchema = z.object({
  *                 Connect button in the marketplace.
  *
  * An agent with `requires_payment: true` or any money-tier tool MUST NOT
- * declare `"none"`. The Super Agent will refuse to load such a manifest.
+ * declare `"none"`. Orchet will refuse to load such a manifest.
  *
  * Why a block, not top-level fields: future additions (API-key-per-user,
  * MTLS, passkey-bound bearer) extend this block without churning the top
@@ -108,7 +108,7 @@ export const AgentConnectSchema = z.discriminatedUnion("model", [
       )
       .min(1),
     /**
-     * Env var name the Super Agent looks up for this agent's OAuth
+     * Env var name Orchet looks up for this agent's OAuth
      * client_id and client_secret. Conventions accepted:
      *   - ORCHET_<AGENT_ID_SHOUT>_CLIENT_ID / ORCHET_<AGENT_ID_SHOUT>_CLIENT_SECRET   (preferred)
      *   - LUMO_<AGENT_ID_SHOUT>_CLIENT_ID   / LUMO_<AGENT_ID_SHOUT>_CLIENT_SECRET     (legacy, supported until coordinated prod env-var rename)
@@ -125,7 +125,7 @@ export const AgentConnectSchema = z.discriminatedUnion("model", [
      * (PKCE only). Public is the right default for user-facing apps where
      * the "secret" would just be bundled in the browser. Confidential is
      * right for server-to-server where we can keep the secret out of
-     * client code. Lumo Super Agent is always server-side, so
+     * client code. Orchet's runtime is always server-side, so
      * confidential is preferred — but agents that haven't wired secrets
      * can still register as public.
      */
@@ -262,7 +262,7 @@ export const AgentManifestSchema = z.object({
 
   /**
    * Contract/capability block. Defaulted so v0.1.x manifests still parse —
-   * but registry-level validation (in the shell) will refuse to register
+   * but registry-level validation (in Orchet) will refuse to register
    * an agent that exposes a money tool without `implements_cancellation`.
    */
   capabilities: AgentCapabilitiesSchema.default({
@@ -272,8 +272,8 @@ export const AgentManifestSchema = z.object({
   }),
 
   /**
-   * Connection block — how a Lumo user links their account on THIS agent
-   * to their Lumo identity. See {@link AgentConnectSchema}. Defaulted to
+   * Connection block — how an Orchet user links their account on THIS agent
+   * to their Orchet identity. See {@link AgentConnectSchema}. Defaulted to
    * `none` so pre-v0.4 manifests still parse; the registry validator
    * refuses agents with money tools + model="none".
    */
@@ -350,7 +350,7 @@ export function defineManifest(input: AgentManifestInput): AgentManifest {
 }
 
 /**
- * Runtime guard used by the shell when it loads `/.well-known/agent.json` from
+ * Runtime guard used by Orchet when it loads `/.well-known/agent.json` from
  * a remote agent. Never trust manifest data without running it through this.
  */
 export function parseManifest(raw: unknown): AgentManifest {
