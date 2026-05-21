@@ -46,12 +46,12 @@ export declare const AgentUIManifestSchema: z.ZodObject<{
  * them keeps the top of the manifest stable.
  */
 /**
- * Connection block — introduced in SDK v0.4 to support the Orchet marketplace.
+ * Connection block — introduced in SDK v0.4 to support the Orchet Store.
  *
  * Every agent that holds user-scoped state (a cart, an order history, a
  * saved payment method, a loyalty account) declares how an Orchet user
  * "connects" their identity to the agent. Orchet reads this block when
- * rendering the marketplace card ("Connect Food Agent") and the router
+ * rendering the Orchet Store card ("Connect Food Agent") and the router
  * reads it to know whether to attach a user-scoped bearer
  * token on each tool dispatch.
  *
@@ -64,14 +64,14 @@ export declare const AgentUIManifestSchema: z.ZodObject<{
    *                 tool call. This is the model every Orchet-built agent
  *                 uses and the one third-party SaaS typically slots into.
  *
- *   "lumo_id"   — the agent delegates identity to Orchet. Orchet issues a
+ *   "orchet_user_jwt" — the agent delegates identity to Orchet. Orchet issues a
  *                 signed OIDC token per request; the agent trusts Orchet's
  *                 JWKS. Cheap for Orchet-native agents; doesn't work for
  *                 third-party SaaS with pre-existing user bases.
  *
  *   "none"      — agent exposes only anonymous tools (e.g., a public
  *                 weather lookup). No per-user state, no bearer, no
- *                 Connect button in the marketplace.
+ *                 Connect button in the Orchet Store.
  *
  * An agent with `requires_payment: true` or any money-tier tool MUST NOT
  * declare `"none"`. Orchet will refuse to load such a manifest.
@@ -165,17 +165,17 @@ export declare const AgentConnectSchema: z.ZodDiscriminatedUnion<"model", [z.Zod
     client_secret_env?: string | undefined;
     client_type?: "public" | "confidential" | undefined;
 }>, z.ZodObject<{
-    model: z.ZodLiteral<"lumo_id">;
+    model: z.ZodLiteral<"orchet_user_jwt">;
     /**
      * Audience claim the agent expects on the OIDC ID token. Typically
      * the agent's base URL or agent_id.
      */
     audience: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    model: "lumo_id";
+    model: "orchet_user_jwt";
     audience: string;
 }, {
-    model: "lumo_id";
+    model: "orchet_user_jwt";
     audience: string;
 }>, z.ZodObject<{
     model: z.ZodLiteral<"none">;
@@ -194,7 +194,7 @@ export declare const AgentConnectSchema: z.ZodDiscriminatedUnion<"model", [z.Zod
  *   "agent_owned"      — agent collects payment via its own PG portal.
  *                        Used when the upstream booking API atomically
  *                        requires payment_id at booking-creation time
- *                        (Lumo Rentals' /v1/bookings/{hash} requires
+ *                        (a first-party rentals service's /v1/bookings/{hash} requires
  *                        razorPayPaymentId on the same call). Orchet
  *                        sequences these legs one at a time — the user
  *                        clicks "Pay leg 1 of 2" → confirmation → "Pay
@@ -217,7 +217,7 @@ export declare const AgentConnectSchema: z.ZodDiscriminatedUnion<"model", [z.Zod
  *
  * If unset, defaults to "agent_owned" — safest assumption for any new
  * agent and matches the behavior of every pre-v0.6 agent in the
- * marketplace. Switching to orchet_unified requires the agent to ALSO
+ * Orchet Store. Switching to orchet_unified requires the agent to ALSO
  * expose at least one tool whose name matches /_quote_|quote_booking/
  * (validated at openapi-load time).
  */
@@ -445,17 +445,17 @@ export declare const AgentManifestSchema: z.ZodObject<{
         client_secret_env?: string | undefined;
         client_type?: "public" | "confidential" | undefined;
     }>, z.ZodObject<{
-        model: z.ZodLiteral<"lumo_id">;
+        model: z.ZodLiteral<"orchet_user_jwt">;
         /**
          * Audience claim the agent expects on the OIDC ID token. Typically
          * the agent's base URL or agent_id.
          */
         audience: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        model: "lumo_id";
+        model: "orchet_user_jwt";
         audience: string;
     }, {
-        model: "lumo_id";
+        model: "orchet_user_jwt";
         audience: string;
     }>, z.ZodObject<{
         model: z.ZodLiteral<"none">;
@@ -465,7 +465,7 @@ export declare const AgentManifestSchema: z.ZodObject<{
         model: "none";
     }>]>>;
     /**
-     * Appstore catalog fields (v0.4). Surfaced on /marketplace cards.
+     * Orchet Store catalog fields (v0.4). Surfaced on /marketplace cards.
      * Optional so internal/private agents don't have to fill them in.
      */
     listing: z.ZodOptional<z.ZodObject<{
@@ -548,7 +548,7 @@ export declare const AgentManifestSchema: z.ZodObject<{
         revocation_url?: string | undefined;
         client_secret_env?: string | undefined;
     } | {
-        model: "lumo_id";
+        model: "orchet_user_jwt";
         audience: string;
     } | {
         model: "none";
@@ -610,7 +610,7 @@ export declare const AgentManifestSchema: z.ZodObject<{
         client_secret_env?: string | undefined;
         client_type?: "public" | "confidential" | undefined;
     } | {
-        model: "lumo_id";
+        model: "orchet_user_jwt";
         audience: string;
     } | {
         model: "none";
@@ -636,8 +636,8 @@ export type AgentConnect = z.infer<typeof AgentConnectSchema>;
 export type AgentConnectOAuth2 = Extract<AgentConnect, {
     model: "oauth2";
 }>;
-export type AgentConnectLumoId = Extract<AgentConnect, {
-    model: "lumo_id";
+export type AgentConnectOrchetUserJwt = Extract<AgentConnect, {
+    model: "orchet_user_jwt";
 }>;
 export type AgentConnectNone = Extract<AgentConnect, {
     model: "none";

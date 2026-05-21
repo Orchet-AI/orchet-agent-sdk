@@ -1,11 +1,11 @@
 # @orchet/agent-sdk
 
-The contract every Orchet marketplace agent implements, plus helpers the Orchet runtime uses to consume it.
+The contract every Orchet Store agent implements, plus helpers the Orchet runtime uses to consume it.
 
 ## What this package gives you
 
 - **Types** for the agent manifest (`AgentManifest`, `AgentUIManifest`, `AgentSLA`, …).
-- **OpenAPI conventions** — the `x-lumo-*` extensions that mark tools, cost tiers, and confirmation gates.
+- **OpenAPI conventions** — the `x-orchet-*` extensions that mark tools, cost tiers, and confirmation gates.
 - **Tool bridge** — convert an agent's OpenAPI 3.1 operations into Claude tool definitions the orchestrator can expose.
 - **Confirmation gate** — helpers to declare money-moving tools safely.
 - **Health probe** — a standard shape for liveness + readiness.

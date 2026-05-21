@@ -3,7 +3,7 @@
  *
  * Exercises:
  *   1. Happy path — money tool with matching cancel counterpart loads cleanly.
- *   2. Money tool WITHOUT x-lumo-cancels is rejected at bridge time.
+ *   2. Money tool WITHOUT x-orchet-cancels is rejected at bridge time.
  *   3. Money tool pointing at a non-existent cancel id is rejected.
  *   4. Cancel with no back-pointer (or wrong back-pointer) is rejected.
  *   5. Cancel that requires confirmation is rejected (Saga must not re-prompt).
@@ -57,19 +57,19 @@ function docWith(ops) {
 const bookOffer = {
   operationId: "flight_book_offer",
   summary: "Book the held offer",
-  "x-lumo-tool": true,
-  "x-lumo-cost-tier": "money",
-  "x-lumo-requires-confirmation": "structured-itinerary",
-  "x-lumo-cancels": "flight_cancel_booking",
+  "x-orchet-tool": true,
+  "x-orchet-cost-tier": "money",
+  "x-orchet-requires-confirmation": "structured-itinerary",
+  "x-orchet-cancels": "flight_cancel_booking",
 };
 const cancelBooking = {
   operationId: "flight_cancel_booking",
   summary: "Cancel a prior booking (Saga rollback)",
-  "x-lumo-tool": true,
-  "x-lumo-cost-tier": "free",
-  "x-lumo-cancel-for": "flight_book_offer",
-  "x-lumo-requires-confirmation": false,
-  "x-lumo-compensation-kind": "best-effort",
+  "x-orchet-tool": true,
+  "x-orchet-cost-tier": "free",
+  "x-orchet-cancel-for": "flight_book_offer",
+  "x-orchet-requires-confirmation": false,
+  "x-orchet-compensation-kind": "best-effort",
 };
 
 // ── 1. Happy path ────────────────────────────────────────────────────────
@@ -95,26 +95,26 @@ assert(
   "explicit compensation_kind preserved",
 );
 
-// ── 2. Money tool missing x-lumo-cancels ─────────────────────────────────
-console.log("\n[2] money tool without x-lumo-cancels is refused");
+// ── 2. Money tool missing x-orchet-cancels ───────────────────────────────
+console.log("\n[2] money tool without x-orchet-cancels is refused");
 rejects(
   () =>
     openApiToClaudeTools(
       "flight",
-      docWith([["/book", "post", { ...bookOffer, "x-lumo-cancels": undefined }]]),
+      docWith([["/book", "post", { ...bookOffer, "x-orchet-cancels": undefined }]]),
     ),
-  "does not declare `x-lumo-cancels`",
+  "does not declare `x-orchet-cancels`",
   "missing cancel counterpart rejected",
 );
 
 // ── 3. Money tool pointing at non-existent cancel ────────────────────────
-console.log("\n[3] x-lumo-cancels referencing unknown op is refused");
+console.log("\n[3] x-orchet-cancels referencing unknown op is refused");
 rejects(
   () =>
     openApiToClaudeTools(
       "flight",
       docWith([
-        ["/book", "post", { ...bookOffer, "x-lumo-cancels": "ghost_op" }],
+        ["/book", "post", { ...bookOffer, "x-orchet-cancels": "ghost_op" }],
       ]),
     ),
   "is not ",
@@ -122,7 +122,7 @@ rejects(
 );
 
 // ── 4. Cancel without back-pointer (or wrong back-pointer) ───────────────
-console.log("\n[4] cancel missing/wrong x-lumo-cancel-for is refused");
+console.log("\n[4] cancel missing/wrong x-orchet-cancel-for is refused");
 rejects(
   () =>
     openApiToClaudeTools(
@@ -132,7 +132,7 @@ rejects(
         [
           "/cancel",
           "post",
-          { ...cancelBooking, "x-lumo-cancel-for": undefined },
+          { ...cancelBooking, "x-orchet-cancel-for": undefined },
         ],
       ]),
     ),
@@ -148,7 +148,7 @@ rejects(
         [
           "/cancel",
           "post",
-          { ...cancelBooking, "x-lumo-cancel-for": "some_other_tool" },
+          { ...cancelBooking, "x-orchet-cancel-for": "some_other_tool" },
         ],
       ]),
     ),
@@ -169,7 +169,7 @@ rejects(
           "post",
           {
             ...cancelBooking,
-            "x-lumo-requires-confirmation": "structured-booking",
+            "x-orchet-requires-confirmation": "structured-booking",
           },
         ],
       ]),
@@ -187,7 +187,7 @@ const defaulted = openApiToClaudeTools(
     [
       "/cancel",
       "post",
-      { ...cancelBooking, "x-lumo-compensation-kind": undefined },
+      { ...cancelBooking, "x-orchet-compensation-kind": undefined },
     ],
   ]),
 );
@@ -207,12 +207,12 @@ const baseManifest = {
   agent_id: "flight",
   version: "0.1.0",
   domain: "flights",
-  display_name: "Lumo Flights",
+  display_name: "Orchet Flights",
   one_liner: "Search, price, and book flights worldwide.",
   intents: ["book_flight"],
-  openapi_url: "https://flight.lumo.rentals/openapi.json",
+  openapi_url: "https://flight.orchet.ai/openapi.json",
   ui: { components: [] },
-  health_url: "https://flight.lumo.rentals/api/health",
+  health_url: "https://flight.orchet.ai/api/health",
   sla: { p50_latency_ms: 1500, p95_latency_ms: 4000, availability_target: 0.99 },
   pii_scope: ["name", "email"],
   supported_regions: ["US"],

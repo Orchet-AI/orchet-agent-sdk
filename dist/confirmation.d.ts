@@ -1,7 +1,7 @@
 /**
  * Confirmation gate.
  *
- * Any tool call tagged `x-lumo-cost-tier: money` must pass this gate before
+ * Any tool call tagged `x-orchet-cost-tier: money` must pass this gate before
  * the orchestrator will invoke it. The gate is enforced in code — not in the
  * prompt — because a sufficiently creative LLM can always be talked into
  * ignoring instructions.
@@ -52,7 +52,7 @@ export interface ConfirmationEvaluation {
     message?: string;
 }
 export interface EvaluateArgs {
-    /** The kind of summary the tool requires (from x-lumo-requires-confirmation). */
+    /** The kind of summary the tool requires (from x-orchet-requires-confirmation). */
     required_kind: ConfirmationKind;
     /** The most recent summary rendered in this session. */
     prior_summary: ConfirmationSummary | null;

@@ -2,7 +2,7 @@
  * OpenAPI ↔ Claude tool bridge.
  *
  * The shell's orchestrator exposes Claude a union of tools drawn from every
- * registered agent. Each agent ships an OpenAPI 3.1 spec; the `x-lumo-*`
+ * registered agent. Each agent ships an OpenAPI 3.1 spec; the `x-orchet-*`
  * extensions below mark which operations become LLM tools and how they are
  * gated.
  *
@@ -16,7 +16,7 @@
 import type { CostTier } from "./types.js";
 
 // ──────────────────────────────────────────────────────────────────────────
-// x-lumo-* extension conventions (documented for agent authors)
+// x-orchet-* extension conventions (documented for agent authors)
 // ──────────────────────────────────────────────────────────────────────────
 
 /**
@@ -27,44 +27,44 @@ import type { CostTier } from "./types.js";
  *   /confirm:
  *     post:
  *       operationId: flight_book_offer
- *       x-lumo-tool: true
- *       x-lumo-cost-tier: money
- *       x-lumo-requires-confirmation: structured-itinerary
- *       x-lumo-pii-required: [name, email, payment_method_id]
- *       x-lumo-cancels: flight_cancel_booking
- *       x-lumo-compensation-kind: best-effort
- *       x-lumo-reversibility: compensating
- *       x-lumo-compensating-tool: flight_cancel_booking
- *       x-lumo-compensating-inputs-template:
+ *       x-orchet-tool: true
+ *       x-orchet-cost-tier: money
+ *       x-orchet-requires-confirmation: structured-itinerary
+ *       x-orchet-pii-required: [name, email, payment_method_id]
+ *       x-orchet-cancels: flight_cancel_booking
+ *       x-orchet-compensation-kind: best-effort
+ *       x-orchet-reversibility: compensating
+ *       x-orchet-compensating-tool: flight_cancel_booking
+ *       x-orchet-compensating-inputs-template:
  *         booking_id: "{{outputs.booking_id}}"
  *   /cancel:
  *     post:
  *       operationId: flight_cancel_booking
- *       x-lumo-tool: true
- *       x-lumo-cost-tier: free        # cancellation itself never charges
- *       x-lumo-cancel-for: flight_book_offer
- *       x-lumo-requires-confirmation: false
+ *       x-orchet-tool: true
+ *       x-orchet-cost-tier: free        # cancellation itself never charges
+ *       x-orchet-cancel-for: flight_book_offer
+ *       x-orchet-requires-confirmation: false
  * ```
  *
  * Contract — cancellation protocol (see RFC 0001):
- * - Any operation with `x-lumo-cost-tier: money` MUST declare `x-lumo-cancels`
- *   pointing to a peer operation on the same agent whose `x-lumo-cancel-for`
+ * - Any operation with `x-orchet-cost-tier: money` MUST declare `x-orchet-cancels`
+ *   pointing to a peer operation on the same agent whose `x-orchet-cancel-for`
  *   matches it (bidirectional link, validated at registry load).
- * - The cancel counterpart MUST set `x-lumo-requires-confirmation: false`
+ * - The cancel counterpart MUST set `x-orchet-requires-confirmation: false`
  *   — rollback fires WITHOUT re-prompting the user; a stuck money tool that
  *   depended on a second human ack would be a Saga deadlock.
- * - `x-lumo-compensation-kind` classifies what the cancel guarantees:
+ * - `x-orchet-compensation-kind` classifies what the cancel guarantees:
  *   • `perfect`     — vendor fully reverses (e.g. reservation hold release)
  *   • `best-effort` — subject to vendor policy; may be partial refund
  *   • `manual`      — cancel tool exists but expects human follow-up
  *   Orchestrator uses this to decide whether to surface
  *   `rollback_incomplete` warnings to the user proactively.
  */
-export interface LumoOperationExtensions {
-  "x-lumo-tool"?: boolean;
-  "x-lumo-cost-tier"?: CostTier;
+export interface OrchetOperationExtensions {
+  "x-orchet-tool"?: boolean;
+  "x-orchet-cost-tier"?: CostTier;
   /** The shape of the summary the user must have confirmed before this tool fires. */
-  "x-lumo-requires-confirmation"?:
+  "x-orchet-requires-confirmation"?:
     | "structured-cart"
     | "structured-itinerary"
     | "structured-booking"
@@ -72,43 +72,43 @@ export interface LumoOperationExtensions {
     | "structured-trip"
     | false;
   /** PII fields the tool needs in its request body. */
-  "x-lumo-pii-required"?: string[];
+  "x-orchet-pii-required"?: string[];
   /** Tags the orchestrator uses for routing heuristics and analytics. */
-  "x-lumo-intent-tags"?: string[];
+  "x-orchet-intent-tags"?: string[];
   /**
    * operationId of the cancel counterpart for this tool. Required for any
    * operation at cost-tier `money`. The Saga invokes this on rollback.
    */
-  "x-lumo-cancels"?: string;
+  "x-orchet-cancels"?: string;
   /**
    * Set on a cancel tool to declare which money tool it rolls back. Must
-   * point to a peer operation on the same agent whose `x-lumo-cancels`
+   * point to a peer operation on the same agent whose `x-orchet-cancels`
    * points back to this one.
    */
-  "x-lumo-cancel-for"?: string;
+  "x-orchet-cancel-for"?: string;
   /**
    * Declares the strength of the compensation guarantee. See the module
    * doc comment for semantics. Defaults to `best-effort` on any cancel tool.
    */
-  "x-lumo-compensation-kind"?: "perfect" | "best-effort" | "manual";
+  "x-orchet-compensation-kind"?: "perfect" | "best-effort" | "manual";
   /**
    * Declares how durable mission rollback should treat the operation after
-   * it succeeds. Absent values are interpreted conservatively by Lumo Core.
+   * it succeeds. Absent values are interpreted conservatively by Orchet.
    */
-  "x-lumo-reversibility"?: "reversible" | "compensating" | "irreversible";
+  "x-orchet-reversibility"?: "reversible" | "compensating" | "irreversible";
   /**
    * operationId of the compensating action to call during mission rollback.
-   * This is intentionally separate from `x-lumo-cancels` so non-money tools
+   * This is intentionally separate from `x-orchet-cancels` so non-money tools
    * can declare a compensation path too.
    */
-  "x-lumo-compensating-tool"?: string;
+  "x-orchet-compensating-tool"?: string;
   /**
    * Template rendered against the original step outputs before invoking the
    * compensating tool. Supports simple `{{outputs.foo.bar}}` substitutions.
    */
-  "x-lumo-compensating-inputs-template"?: Record<string, unknown>;
+  "x-orchet-compensating-inputs-template"?: Record<string, unknown>;
   /** Optional time window after which compensation should not be attempted. */
-  "x-lumo-compensating-window-seconds"?: number;
+  "x-orchet-compensating-window-seconds"?: number;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ export interface OpenApiPathItem {
   delete?: OpenApiOperation;
 }
 
-export interface OpenApiOperation extends LumoOperationExtensions {
+export interface OpenApiOperation extends OrchetOperationExtensions {
   operationId: string;
   summary?: string;
   description?: string;
@@ -201,7 +201,7 @@ export interface ToolRoutingEntry {
    */
   compensation_kind?: "perfect" | "best-effort" | "manual";
   /**
-   * Durable mission rollback semantics for this operation. If absent, Lumo
+   * Durable mission rollback semantics for this operation. If absent, Orchet
    * Core falls back to its conservative heuristics.
    */
   reversibility?: "reversible" | "compensating" | "irreversible";
@@ -222,7 +222,7 @@ export interface BridgeResult {
  * Convert a single agent's OpenAPI document into (a) the Claude tool list
  * and (b) a routing table the orchestrator uses at dispatch time.
  *
- * Only operations with `x-lumo-tool: true` become tools. Operations without
+ * Only operations with `x-orchet-tool: true` become tools. Operations without
  * the extension are ignored (they may be internal endpoints, webhooks, etc.).
  */
 export function openApiToClaudeTools(
@@ -244,7 +244,7 @@ export function openApiToClaudeTools(
     ];
 
     for (const [method, op] of methods) {
-      if (!op || op["x-lumo-tool"] !== true) continue;
+      if (!op || op["x-orchet-tool"] !== true) continue;
 
       const schema = extractInputSchema(op, componentSchemas);
       const tool: ClaudeTool = {
@@ -262,19 +262,23 @@ export function openApiToClaudeTools(
         operation_id: op.operationId,
         http_method: method,
         path,
-        cost_tier: op["x-lumo-cost-tier"] ?? "free",
-        requires_confirmation: op["x-lumo-requires-confirmation"] ?? false,
-        pii_required: op["x-lumo-pii-required"] ?? [],
-        intent_tags: op["x-lumo-intent-tags"] ?? [],
-        cancels: op["x-lumo-cancels"],
-        cancel_for: op["x-lumo-cancel-for"],
+        cost_tier: op["x-orchet-cost-tier"] ?? "free",
+        requires_confirmation:
+          op["x-orchet-requires-confirmation"] ?? false,
+        pii_required: op["x-orchet-pii-required"] ?? [],
+        intent_tags: op["x-orchet-intent-tags"] ?? [],
+        cancels: op["x-orchet-cancels"],
+        cancel_for: op["x-orchet-cancel-for"],
         compensation_kind:
-          op["x-lumo-compensation-kind"] ??
-          (op["x-lumo-cancel-for"] ? "best-effort" : undefined),
-        reversibility: op["x-lumo-reversibility"],
-        compensating_tool: op["x-lumo-compensating-tool"] ?? op["x-lumo-cancels"],
-        compensating_inputs_template: op["x-lumo-compensating-inputs-template"],
-        compensating_window_seconds: op["x-lumo-compensating-window-seconds"],
+          op["x-orchet-compensation-kind"] ??
+          (op["x-orchet-cancel-for"]
+            ? "best-effort"
+            : undefined),
+        reversibility: op["x-orchet-reversibility"],
+        compensating_tool:
+          op["x-orchet-compensating-tool"] ?? op["x-orchet-cancels"],
+        compensating_inputs_template: op["x-orchet-compensating-inputs-template"],
+        compensating_window_seconds: op["x-orchet-compensating-window-seconds"],
       };
     }
   }
@@ -310,7 +314,7 @@ function validateCancellationProtocol(
     if (!entry.cancels) {
       throw new Error(
         `[${agentId}] Operation "${entry.operation_id}" is cost-tier "money" ` +
-          `but does not declare \`x-lumo-cancels\`. Every money tool must ship ` +
+          `but does not declare \`x-orchet-cancels\`. Every money tool must ship ` +
           `a cancel counterpart so the Saga can roll it back on compound-booking failure.`,
       );
     }
@@ -318,8 +322,8 @@ function validateCancellationProtocol(
     if (!cancelTool) {
       throw new Error(
         `[${agentId}] Operation "${entry.operation_id}" declares ` +
-          `\`x-lumo-cancels: ${entry.cancels}\`, but that operationId is not ` +
-          `exposed as a tool in this agent's OpenAPI. Add \`x-lumo-tool: true\` ` +
+          `\`x-orchet-cancels: ${entry.cancels}\`, but that operationId is not ` +
+          `exposed as a tool in this agent's OpenAPI. Add \`x-orchet-tool: true\` ` +
           `to the cancel operation (cancels live on the same agent as the money tool).`,
       );
     }
@@ -327,7 +331,7 @@ function validateCancellationProtocol(
       throw new Error(
         `[${agentId}] Cancel link is not bidirectional: ` +
           `"${entry.operation_id}" points at "${entry.cancels}", but ` +
-          `"${entry.cancels}".x-lumo-cancel-for === ` +
+          `"${entry.cancels}".x-orchet-cancel-for === ` +
           `"${cancelTool.cancel_for ?? "(unset)"}". ` +
           `Both operations must reference each other.`,
       );
@@ -335,7 +339,7 @@ function validateCancellationProtocol(
     if (cancelTool.requires_confirmation !== false) {
       throw new Error(
         `[${agentId}] Cancel tool "${cancelTool.operation_id}" sets ` +
-          `\`x-lumo-requires-confirmation: ${cancelTool.requires_confirmation}\`. ` +
+          `\`x-orchet-requires-confirmation: ${cancelTool.requires_confirmation}\`. ` +
           `Cancel tools must set \`false\` — the Saga runs rollback without ` +
           `re-prompting the user (re-prompt would deadlock compound bookings ` +
           `where an earlier leg has already committed).`,
@@ -360,22 +364,22 @@ function validateRollbackProtocol(
     if (!entry.compensating_tool) {
       throw new Error(
         `[${agentId}] Operation "${entry.operation_id}" declares ` +
-          `\`x-lumo-reversibility: compensating\` but does not declare ` +
-          `\`x-lumo-compensating-tool\` (or legacy \`x-lumo-cancels\`).`,
+          `\`x-orchet-reversibility: compensating\` but does not declare ` +
+          `\`x-orchet-compensating-tool\` or \`x-orchet-cancels\`.`,
       );
     }
     const compensatingTool = routing[entry.compensating_tool];
     if (!compensatingTool) {
       throw new Error(
         `[${agentId}] Operation "${entry.operation_id}" declares ` +
-          `\`x-lumo-compensating-tool: ${entry.compensating_tool}\`, but that ` +
+          `\`x-orchet-compensating-tool: ${entry.compensating_tool}\`, but that ` +
           `operationId is not exposed as a tool in this agent's OpenAPI.`,
       );
     }
     if (compensatingTool.requires_confirmation !== false) {
       throw new Error(
         `[${agentId}] Compensating tool "${compensatingTool.operation_id}" sets ` +
-          `\`x-lumo-requires-confirmation: ${compensatingTool.requires_confirmation}\`. ` +
+          `\`x-orchet-requires-confirmation: ${compensatingTool.requires_confirmation}\`. ` +
           `Rollback compensation must not require a second human confirmation.`,
       );
     }

@@ -1,7 +1,7 @@
 /**
  * @orchet/agent-sdk
  *
- * The contract every Orchet marketplace agent implements.
+ * The contract every Orchet Store agent implements.
  */
 export * from "./manifest.js";
 export * from "./openapi.js";
