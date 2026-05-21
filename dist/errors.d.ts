@@ -13,7 +13,7 @@ export interface AgentError {
     /** Agent-scoped request id for traces. */
     trace_id?: string;
 }
-export declare class LumoAgentError extends Error {
+export declare class OrchetAgentError extends Error {
     readonly code: AgentErrorCode;
     readonly detail?: Record<string, unknown>;
     readonly trace_id?: string;

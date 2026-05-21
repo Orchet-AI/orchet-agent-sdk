@@ -7,7 +7,7 @@ export type IATA = string;
 export type CurrencyCode = string;
 export type RegionCode = string;
 /**
- * Tiers used by x-lumo-cost-tier. The shell uses this to decide whether a
+ * Tiers used by x-orchet-cost-tier. The shell uses this to decide whether a
  * tool call needs the confirmation gate.
  */
 export type CostTier = "free" | "low" | "metered" | "money";

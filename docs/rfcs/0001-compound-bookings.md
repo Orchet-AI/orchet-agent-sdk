@@ -132,14 +132,14 @@ one the shell computed server-side.
 ### 3.3 `ConfirmationKind` extension
 
 Add `"structured-trip"` to the union. Any tool tagged
-`x-lumo-cost-tier: money-compound` requires `required_kind:
+`x-orchet-cost-tier: money-compound` requires `required_kind:
 "structured-trip"` at the gate.
 
 ## 4. Cancellation protocol
 
 ### 4.1 Specialist obligation
 
-Every specialist that declares a tool with `x-lumo-cost-tier: money`
+Every specialist that declares a tool with `x-orchet-cost-tier: money`
 MUST declare a cancellation counterpart with:
 
 ```yaml
@@ -147,8 +147,8 @@ MUST declare a cancellation counterpart with:
 paths:
   /tools/flight_cancel_booking:
     post:
-      x-lumo-cancels: "flight_book_offer"   # tool_name it compensates
-      x-lumo-cost-tier: "compensation"      # distinct from money/read
+      x-orchet-cancels: "flight_book_offer"   # tool_name it compensates
+      x-orchet-cost-tier: "compensation"      # distinct from money/read
       requestBody:
         # Takes the booking_id returned by the booked tool
         required: true
@@ -158,7 +158,7 @@ paths:
         '422':  # too late to cancel (past non-refundable window)
 ```
 
-The shell's OpenAPI parser reads `x-lumo-cancels` at boot and wires the
+The shell's OpenAPI parser reads `x-orchet-cancels` at boot and wires the
 cancel tool to its corresponding book tool. If a specialist declares a
 money tool without a cancel counterpart, manifest validation **fails at
 registry load** — the specialist does not get registered. This is a
@@ -170,7 +170,7 @@ On compound-booking failure at leg N (where legs `1..N-1` already
 committed), the orchestrator:
 
 1. For each committed leg `i` in `N-1..1` (reverse order):
-   1. Look up its cancel tool via `x-lumo-cancels`.
+   1. Look up its cancel tool via `x-orchet-cancels`.
    2. POST to it with the leg's booking reference.
    3. Retry with exponential backoff (3 attempts: 0s, 1s, 4s).
 2. If any cancellation exhausts retries, **do not silently swallow**.
@@ -281,7 +281,7 @@ which we'll measure via eval traces.
 
 | Consumer | Action | Breaking? |
 | --- | --- | --- |
-| Existing Flight Agent | Add `flight_cancel_booking` tool, declare `x-lumo-cancels` | **Breaking** — money tools without cancels fail manifest validation |
+| Existing Flight Agent | Add `flight_cancel_booking` tool, declare `x-orchet-cancels` | **Breaking** — money tools without cancels fail manifest validation |
 | Super Agent | Upgrade to SDK v0.2.0, implement compound orchestrator | Non-breaking at runtime, additive |
 | Food Agent (future) | Must declare cancels on any money-tier tool | N/A — not yet SDK-conformant |
 | Third parties | N/A in v0.2.0 window | — |
@@ -304,9 +304,9 @@ SDK v0.2.0 ships:
       `stripTripSummary`, `LUMO_TRIP_SUMMARY_KEY`.
 - [ ] `src/confirmation.ts` — add `"structured-trip"` to `ConfirmationKind`,
       add `evaluateCompoundConfirmation()`.
-- [ ] `src/manifest.ts` — add `x-lumo-cancels` manifest validation,
+- [ ] `src/manifest.ts` — add `x-orchet-cancels` manifest validation,
       `AgentManifestSchema` enforces cancel counterparts.
-- [ ] `src/openapi.ts` — surface `x-lumo-cancels` on the tool bridge so
+- [ ] `src/openapi.ts` — surface `x-orchet-cancels` on the tool bridge so
       orchestrator can look up cancel tools.
 - [ ] README + migration guide for v0.1 → v0.2.
 - [ ] Tag `v0.2.0`, push.

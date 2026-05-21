@@ -2,7 +2,7 @@
  * Agent manifest types.
  *
  * Every specialist agent serves a manifest at `/.well-known/agent.json` that
- * conforms to {@link AgentManifest}. The shell polls manifests at boot to build
+ * conforms to {@link AgentManifest}. Orchet polls manifests at boot to build
  * its registry and re-validates on every deploy webhook.
  */
 import { z } from "zod";
@@ -23,7 +23,7 @@ export const AgentUIManifestSchema = z.object({
     components: z.array(z.string()).default([]),
 });
 /**
- * Self-declared contract version and capability flags. The shell reads this
+ * Self-declared contract version and capability flags. Orchet reads this
  * at `/.well-known/agent.json` load and fast-fails if the agent is missing
  * a capability the registry needs.
  *
@@ -32,35 +32,35 @@ export const AgentUIManifestSchema = z.object({
  * them keeps the top of the manifest stable.
  */
 /**
- * Connection block — introduced in SDK v0.4 to support the Lumo appstore.
+ * Connection block — introduced in SDK v0.4 to support the Orchet Store.
  *
  * Every agent that holds user-scoped state (a cart, an order history, a
- * saved payment method, a loyalty account) declares how a Lumo user
- * "connects" their identity to the agent. The Super Agent reads this
- * block when rendering the marketplace card ("Connect Food Agent") and
- * the router reads it to know whether to attach a user-scoped bearer
+ * saved payment method, a loyalty account) declares how an Orchet user
+ * "connects" their identity to the agent. Orchet reads this block when
+ * rendering the Orchet Store card ("Connect Food Agent") and the router
+ * reads it to know whether to attach a user-scoped bearer
  * token on each tool dispatch.
  *
  * Three models are allowed today:
  *
- *   "oauth2"    — the agent is an OAuth 2.1 Authorization Server. Lumo
+ *   "oauth2"    — the agent is an OAuth 2.1 Authorization Server. Orchet
  *                 kicks off the Authorization Code + PKCE flow, stores
  *                 the returned access/refresh tokens per user, and
  *                 attaches `Authorization: Bearer <access>` on every
- *                 tool call. This is the model every Lumo-built agent
+   *                 tool call. This is the model every Orchet-built agent
  *                 uses and the one third-party SaaS typically slots into.
  *
- *   "lumo_id"   — the agent delegates identity to Lumo. Lumo issues a
- *                 signed OIDC token per request; the agent trusts Lumo's
- *                 JWKS. Cheap for Lumo-native agents; doesn't work for
+ *   "orchet_user_jwt" — the agent delegates identity to Orchet. Orchet issues a
+ *                 signed OIDC token per request; the agent trusts Orchet's
+ *                 JWKS. Cheap for Orchet-native agents; doesn't work for
  *                 third-party SaaS with pre-existing user bases.
  *
  *   "none"      — agent exposes only anonymous tools (e.g., a public
  *                 weather lookup). No per-user state, no bearer, no
- *                 Connect button in the marketplace.
+ *                 Connect button in the Orchet Store.
  *
  * An agent with `requires_payment: true` or any money-tier tool MUST NOT
- * declare `"none"`. The Super Agent will refuse to load such a manifest.
+ * declare `"none"`. Orchet will refuse to load such a manifest.
  *
  * Why a block, not top-level fields: future additions (API-key-per-user,
  * MTLS, passkey-bound bearer) extend this block without churning the top
@@ -100,7 +100,7 @@ export const AgentConnectSchema = z.discriminatedUnion("model", [
         }))
             .min(1),
         /**
-         * Env var name the Super Agent looks up for this agent's OAuth
+         * Env var name Orchet looks up for this agent's OAuth
          * client_id and client_secret. Conventions accepted:
          *   - ORCHET_<AGENT_ID_SHOUT>_CLIENT_ID / ORCHET_<AGENT_ID_SHOUT>_CLIENT_SECRET   (preferred)
          *   - LUMO_<AGENT_ID_SHOUT>_CLIENT_ID   / LUMO_<AGENT_ID_SHOUT>_CLIENT_SECRET     (legacy, supported until coordinated prod env-var rename)
@@ -117,14 +117,14 @@ export const AgentConnectSchema = z.discriminatedUnion("model", [
          * (PKCE only). Public is the right default for user-facing apps where
          * the "secret" would just be bundled in the browser. Confidential is
          * right for server-to-server where we can keep the secret out of
-         * client code. Lumo Super Agent is always server-side, so
+         * client code. Orchet's runtime is always server-side, so
          * confidential is preferred — but agents that haven't wired secrets
          * can still register as public.
          */
         client_type: z.enum(["public", "confidential"]).default("confidential"),
     }),
     z.object({
-        model: z.literal("lumo_id"),
+        model: z.literal("orchet_user_jwt"),
         /**
          * Audience claim the agent expects on the OIDC ID token. Typically
          * the agent's base URL or agent_id.
@@ -134,6 +134,48 @@ export const AgentConnectSchema = z.discriminatedUnion("model", [
     z.object({
         model: z.literal("none"),
     }),
+]);
+/**
+ * Payment-architecture declaration — introduced in SDK v0.6 to support
+ * Orchet's unified-checkout vision (one payment per trip, even when
+ * the trip spans multiple agents).
+ *
+ * Three modes are allowed today:
+ *
+ *   "agent_owned"      — agent collects payment via its own PG portal.
+ *                        Used when the upstream booking API atomically
+ *                        requires payment_id at booking-creation time
+ *                        (a first-party rentals service's /v1/bookings/{hash} requires
+ *                        razorPayPaymentId on the same call). Orchet
+ *                        sequences these legs one at a time — the user
+ *                        clicks "Pay leg 1 of 2" → confirmation → "Pay
+ *                        leg 2 of 2" in the chat thread.
+ *
+ *   "orchet_unified"   — agent only QUOTES + FINALIZES; Orchet collects
+ *                        ONE payment for the trip's total via its own
+ *                        PG account and disburses to each agent after
+ *                        capture. The agent exposes `*_quote_*` tools
+ *                        that return a QuoteToken (HMAC-signed amount +
+ *                        finalize_url + finalize_payload). This is the
+ *                        target architecture — best UX for multi-leg
+ *                        trips (Flight + Car + Hotel = one swipe).
+ *
+ *   "hybrid"           — agent supports BOTH. Exposes legacy single-leg
+ *                        booking tools (agent_owned) AND quote tools
+ *                        (orchet_unified). Orchet's dispatcher picks
+ *                        orchet_unified for multi-leg bundles and
+ *                        agent_owned for solo bookings (less ceremony).
+ *
+ * If unset, defaults to "agent_owned" — safest assumption for any new
+ * agent and matches the behavior of every pre-v0.6 agent in the
+ * Orchet Store. Switching to orchet_unified requires the agent to ALSO
+ * expose at least one tool whose name matches /_quote_|quote_booking/
+ * (validated at openapi-load time).
+ */
+export const AgentPaymentModeSchema = z.enum([
+    "agent_owned",
+    "orchet_unified",
+    "hybrid",
 ]);
 export const AgentCapabilitiesSchema = z.object({
     /**
@@ -157,6 +199,13 @@ export const AgentCapabilitiesSchema = z.object({
      * even before the first tool bridge is built.
      */
     implements_cancellation: z.boolean().default(false),
+    /**
+     * How this agent collects money. See {@link AgentPaymentModeSchema}.
+     * Defaulted to `agent_owned` so pre-v0.6 manifests parse unchanged
+     * and the orchestrator's trip-payment dispatcher treats them
+     * conservatively (sequential per-leg pay flow).
+     */
+    payment_mode: AgentPaymentModeSchema.default("agent_owned"),
 });
 export const AgentManifestSchema = z.object({
     agent_id: z.string().regex(/^[a-z][a-z0-9-]{2,31}$/),
@@ -191,7 +240,7 @@ export const AgentManifestSchema = z.object({
     supported_regions: z.array(z.string()).default([]),
     /**
      * Contract/capability block. Defaulted so v0.1.x manifests still parse —
-     * but registry-level validation (in the shell) will refuse to register
+     * but registry-level validation (in Orchet) will refuse to register
      * an agent that exposes a money tool without `implements_cancellation`.
      */
     capabilities: AgentCapabilitiesSchema.default({
@@ -200,14 +249,14 @@ export const AgentManifestSchema = z.object({
         implements_cancellation: false,
     }),
     /**
-     * Connection block — how a Lumo user links their account on THIS agent
-     * to their Lumo identity. See {@link AgentConnectSchema}. Defaulted to
+     * Connection block — how an Orchet user links their account on THIS agent
+     * to their Orchet identity. See {@link AgentConnectSchema}. Defaulted to
      * `none` so pre-v0.4 manifests still parse; the registry validator
      * refuses agents with money tools + model="none".
      */
     connect: AgentConnectSchema.default({ model: "none" }),
     /**
-     * Appstore catalog fields (v0.4). Surfaced on /marketplace cards.
+     * Orchet Store catalog fields (v0.4). Surfaced on /marketplace cards.
      * Optional so internal/private agents don't have to fill them in.
      */
     listing: z
@@ -247,7 +296,7 @@ export function defineManifest(input) {
     return parsed.data;
 }
 /**
- * Runtime guard used by the shell when it loads `/.well-known/agent.json` from
+ * Runtime guard used by Orchet when it loads `/.well-known/agent.json` from
  * a remote agent. Never trust manifest data without running it through this.
  */
 export function parseManifest(raw) {

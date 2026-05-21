@@ -1,6 +1,6 @@
 {
   "name": "@orchet/agent-sdk",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Contract and helpers every Orchet specialist agent implements. Manifest types, OpenAPI \u2192 Claude tool bridge, confirmation gate, attached-summary envelope, health probes.",
   "type": "module",
   "main": "./dist/index.js",
@@ -86,7 +86,7 @@
     "url": "https://github.com/Orchet-AI/orchet-agent-sdk.git"
   },
   "publishConfig": {
-    "access": "restricted"
+    "access": "public"
   },
   "engines": {
     "node": ">=20.10.0"

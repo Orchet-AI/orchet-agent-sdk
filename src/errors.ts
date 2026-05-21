@@ -23,7 +23,7 @@ export type AgentErrorCode =
   | "payment_failed"
   | "payment_declined"
   | "refund_failed"
-  // Appstore / connection (v0.4)
+  // Orchet Store / connection (v0.4)
   | "connection_required"
   | "connection_refresh_failed"
   // Generic
@@ -40,7 +40,7 @@ export interface AgentError {
   trace_id?: string;
 }
 
-export class LumoAgentError extends Error {
+export class OrchetAgentError extends Error {
   readonly code: AgentErrorCode;
   readonly detail?: Record<string, unknown>;
   readonly trace_id?: string;
@@ -50,7 +50,7 @@ export class LumoAgentError extends Error {
     trace_id?: string;
   }) {
     super(message);
-    this.name = "LumoAgentError";
+    this.name = "OrchetAgentError";
     this.code = code;
     this.detail = opts?.detail;
     this.trace_id = opts?.trace_id;
@@ -87,8 +87,8 @@ export const DEFAULT_USER_COPY: Record<AgentErrorCode, string> = {
   payment_declined: "Your card was declined. Want to try a different card?",
   refund_failed: "The refund didn't go through — I'll flag this to our team.",
   connection_required:
-    "You'll need to connect that app first. Open the Marketplace and hit Connect.",
+    "You'll need to connect that app first. Open the Orchet Store and hit Connect.",
   connection_refresh_failed:
-    "Your connection to that app expired. Reconnect from the Marketplace and I'll pick it back up.",
+    "Your connection to that app expired. Reconnect from the Orchet Store and I'll pick it back up.",
   internal_error: "Something broke on my end. I've logged it — please try again.",
 };
