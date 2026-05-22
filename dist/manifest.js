@@ -136,6 +136,23 @@ export const AgentConnectSchema = z.discriminatedUnion("model", [
     }),
 ]);
 /**
+ * Chat-first connection UI metadata. Orchet uses this when an agent requires
+ * OAuth or another account link during a chat request. The inline connect card
+ * should come from the agent contract, not from hardcoded Orchet UI copy.
+ */
+export const AgentConnectionUISchema = z.object({
+    /** Card header, e.g. "Connect Splitwise". */
+    title: z.string().min(2).max(80).optional(),
+    /** One-sentence reason shown above the button. */
+    description: z.string().min(8).max(240).optional(),
+    /** Primary action label, e.g. "Connect Splitwise". */
+    button_label: z.string().min(2).max(80).optional(),
+    /** Provider name used by fallback copy. */
+    provider_name: z.string().min(2).max(64).optional(),
+    /** Privacy/auth flow note shown below the description. */
+    privacy_note: z.string().min(8).max(280).optional(),
+});
+/**
  * Payment-architecture declaration — introduced in SDK v0.6 to support
  * Orchet's unified-checkout vision (one payment per trip, even when
  * the trip spans multiple agents).
@@ -255,6 +272,11 @@ export const AgentManifestSchema = z.object({
      * refuses agents with money tools + model="none".
      */
     connect: AgentConnectSchema.default({ model: "none" }),
+    /**
+     * Optional copy for the inline chat connect card. If omitted, Orchet derives
+     * "Connect {display_name}" fallback copy from the manifest.
+     */
+    connection_ui: AgentConnectionUISchema.optional(),
     /**
      * Orchet Store catalog fields (v0.4). Surfaced on /marketplace cards.
      * Optional so internal/private agents don't have to fill them in.

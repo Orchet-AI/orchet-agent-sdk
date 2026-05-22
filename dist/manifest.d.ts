@@ -185,6 +185,35 @@ export declare const AgentConnectSchema: z.ZodDiscriminatedUnion<"model", [z.Zod
     model: "none";
 }>]>;
 /**
+ * Chat-first connection UI metadata. Orchet uses this when an agent requires
+ * OAuth or another account link during a chat request. The inline connect card
+ * should come from the agent contract, not from hardcoded Orchet UI copy.
+ */
+export declare const AgentConnectionUISchema: z.ZodObject<{
+    /** Card header, e.g. "Connect Splitwise". */
+    title: z.ZodOptional<z.ZodString>;
+    /** One-sentence reason shown above the button. */
+    description: z.ZodOptional<z.ZodString>;
+    /** Primary action label, e.g. "Connect Splitwise". */
+    button_label: z.ZodOptional<z.ZodString>;
+    /** Provider name used by fallback copy. */
+    provider_name: z.ZodOptional<z.ZodString>;
+    /** Privacy/auth flow note shown below the description. */
+    privacy_note: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    description?: string | undefined;
+    title?: string | undefined;
+    button_label?: string | undefined;
+    provider_name?: string | undefined;
+    privacy_note?: string | undefined;
+}, {
+    description?: string | undefined;
+    title?: string | undefined;
+    button_label?: string | undefined;
+    provider_name?: string | undefined;
+    privacy_note?: string | undefined;
+}>;
+/**
  * Payment-architecture declaration — introduced in SDK v0.6 to support
  * Orchet's unified-checkout vision (one payment per trip, even when
  * the trip spans multiple agents).
@@ -465,6 +494,34 @@ export declare const AgentManifestSchema: z.ZodObject<{
         model: "none";
     }>]>>;
     /**
+     * Optional copy for the inline chat connect card. If omitted, Orchet derives
+     * "Connect {display_name}" fallback copy from the manifest.
+     */
+    connection_ui: z.ZodOptional<z.ZodObject<{
+        /** Card header, e.g. "Connect Splitwise". */
+        title: z.ZodOptional<z.ZodString>;
+        /** One-sentence reason shown above the button. */
+        description: z.ZodOptional<z.ZodString>;
+        /** Primary action label, e.g. "Connect Splitwise". */
+        button_label: z.ZodOptional<z.ZodString>;
+        /** Provider name used by fallback copy. */
+        provider_name: z.ZodOptional<z.ZodString>;
+        /** Privacy/auth flow note shown below the description. */
+        privacy_note: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        description?: string | undefined;
+        title?: string | undefined;
+        button_label?: string | undefined;
+        provider_name?: string | undefined;
+        privacy_note?: string | undefined;
+    }, {
+        description?: string | undefined;
+        title?: string | undefined;
+        button_label?: string | undefined;
+        provider_name?: string | undefined;
+        privacy_note?: string | undefined;
+    }>>;
+    /**
      * Orchet Store catalog fields (v0.4). Surfaced on /marketplace cards.
      * Optional so internal/private agents don't have to fill them in.
      */
@@ -554,6 +611,13 @@ export declare const AgentManifestSchema: z.ZodObject<{
         model: "none";
     };
     mcp_url?: string | undefined;
+    connection_ui?: {
+        description?: string | undefined;
+        title?: string | undefined;
+        button_label?: string | undefined;
+        provider_name?: string | undefined;
+        privacy_note?: string | undefined;
+    } | undefined;
     listing?: {
         logo_url?: string | undefined;
         hero_url?: string | undefined;
@@ -615,6 +679,13 @@ export declare const AgentManifestSchema: z.ZodObject<{
     } | {
         model: "none";
     } | undefined;
+    connection_ui?: {
+        description?: string | undefined;
+        title?: string | undefined;
+        button_label?: string | undefined;
+        provider_name?: string | undefined;
+        privacy_note?: string | undefined;
+    } | undefined;
     listing?: {
         logo_url?: string | undefined;
         hero_url?: string | undefined;
@@ -633,6 +704,7 @@ export type AgentUIManifest = z.infer<typeof AgentUIManifestSchema>;
 export type AgentCapabilities = z.infer<typeof AgentCapabilitiesSchema>;
 export type AgentPaymentMode = z.infer<typeof AgentPaymentModeSchema>;
 export type AgentConnect = z.infer<typeof AgentConnectSchema>;
+export type AgentConnectionUI = z.infer<typeof AgentConnectionUISchema>;
 export type AgentConnectOAuth2 = Extract<AgentConnect, {
     model: "oauth2";
 }>;
