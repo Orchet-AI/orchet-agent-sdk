@@ -64,7 +64,7 @@
     "smoke:cancellation": "node scripts/smoke-cancellation.mjs",
     "smoke": "npm run smoke:trips && npm run smoke:cancellation",
     "test": "npm run build && npm run smoke",
-    "prepublishOnly": "pnpm run clean && pnpm run build && pnpm run smoke"
+    "prepublishOnly": "npm run clean && npm run build && npm run smoke"
   },
   "dependencies": {
     "zod": "^3.23.0"
@@ -83,7 +83,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Orchet-AI/orchet-agent-sdk.git"
+    "url": "git+https://github.com/Orchet-AI/orchet-agent-sdk.git"
   },
   "publishConfig": {
     "access": "public"
