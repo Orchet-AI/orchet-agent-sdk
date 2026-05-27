@@ -1,61 +1,118 @@
 # @orchet/agent-sdk
 
-The contract every Orchet Store agent implements, plus helpers the Orchet runtime uses to consume it.
+[![npm version](https://img.shields.io/npm/v/@orchet/agent-sdk.svg)](https://www.npmjs.com/package/@orchet/agent-sdk)
+[![node](https://img.shields.io/node/v/@orchet/agent-sdk.svg)](https://www.npmjs.com/package/@orchet/agent-sdk)
 
-## What this package gives you
+**The contract every Orchet specialist agent implements.** Manifest types, OpenAPI → Claude tool bridge, confirmation gates, attached-summary envelopes, and SDK-compliant health probes — everything an agent needs to be discovered, invoked, and trusted by the Orchet orchestrator.
 
-- **Types** for the agent manifest (`AgentManifest`, `AgentUIManifest`, `AgentSLA`, …).
-- **OpenAPI conventions** — the `x-orchet-*` extensions that mark tools, cost tiers, and confirmation gates.
-- **Tool bridge** — convert an agent's OpenAPI 3.1 operations into Claude tool definitions the orchestrator can expose.
-- **Confirmation gate** — helpers to declare money-moving tools safely.
-- **Health probe** — a standard shape for liveness + readiness.
-- **Error taxonomy** — well-known error codes Orchet understands and surfaces to the user.
+[Orchet](https://orchet.ai) is a conversational AI super-agent. Specialist agents (Lumo Rentals, Splitwise, Plaid Investments, your own) plug into Orchet's chat surface via a uniform contract: declare your tools in an `agent.json` manifest, expose them as OpenAPI 3.1 routes, return summaries the chat can render. This SDK is that contract in code.
 
-## If you are building an agent
+## Install
+
+```bash
+npm install @orchet/agent-sdk
+```
+
+Peer dependency on `@anthropic-ai/sdk` (>=0.27.0) is optional — only required if you use the Claude tool-bridge helpers.
+
+## Quick example
 
 ```ts
-import { defineManifest } from "@orchet/agent-sdk";
+import {
+  defineManifest,
+  registerTool,
+  attachSummary,
+  healthHandler,
+} from "@orchet/agent-sdk";
 
 export const manifest = defineManifest({
-  agent_id: "weather-public-readonly",
-  version: "1.0.0",
-  domain: "https://weather.example.com",
-  display_name: "Weather Public Readonly",
-  one_liner: "Get current public weather for a city.",
-  intents: ["weather", "forecast"],
-  openapi_url: "https://weather.example.com/openapi.json",
-  health_url: "https://weather.example.com/health",
-  ui: { components: [] },
-  sla: {
-    p50_latency_ms: 800,
-    p95_latency_ms: 2500,
-    availability_target: 0.99,
-  },
-  pii_scope: [],
-  requires_payment: false,
-  supported_regions: ["US"],
-  capabilities: {
-    sdk_version: "0.6.0",
-    supports_compound_bookings: false,
-    implements_cancellation: false,
-    payment_mode: "agent_owned",
-  },
-  connect: { model: "none" },
+  agent_id: "weather",
+  display_name: "Weather",
+  base_url: "https://weather.example.com",
+  tools: [
+    registerTool({
+      name: "get_forecast",
+      description: "5-day forecast for a city",
+      input_schema: { type: "object", properties: { city: { type: "string" } } },
+    }),
+  ],
 });
+
+// Inside your route handler
+return attachSummary({
+  result: forecastData,
+  summary: { headline: `Mumbai: 31°C, sunny`, kind: "forecast" },
+});
+
+// Liveness probe at /health
+app.get("/health", healthHandler({ agent_id: "weather", version: "1.0.0" }));
 ```
 
-Serve the manifest at `/.well-known/agent.json`, your OpenAPI at `/openapi.json`, and the health probe at `/health`. Orchet discovers you through those endpoints.
+## What's in the box
 
-## If you are working on Orchet runtime
+| Module | Subpath | What it gives you |
+|---|---|---|
+| [`manifest`](./src/manifest.ts) | `@orchet/agent-sdk/manifest` | Typed `AgentManifest` schema + `defineManifest()` helper |
+| [`openapi`](./src/openapi.ts) | `@orchet/agent-sdk/openapi` | OpenAPI 3.1 → Anthropic tool-use conversion |
+| [`confirmation`](./src/confirmation.ts) | `@orchet/agent-sdk/confirmation` | Confirmation gate primitives (mutate-after-explicit-confirm pattern) |
+| [`summaries`](./src/summaries.ts) | `@orchet/agent-sdk/summaries` | `attachSummary()` envelope — gives Orchet the data + the chat-renderable preview |
+| [`trips`](./src/trips.ts) | `@orchet/agent-sdk/trips` | Multi-step trip / mission helpers for compound agents |
+| [`health`](./src/health.ts) | `@orchet/agent-sdk/health` | SDK-compliant `/health` route handler |
 
-```ts
-import { openApiToClaudeTools, evaluateConfirmation } from "@orchet/agent-sdk";
+Top-level `import { ... } from "@orchet/agent-sdk"` re-exports everything.
 
-const tools = openApiToClaudeTools(agentOpenApiDoc);
+## How agents fit into Orchet
+
+```
+┌─────────────────┐     1. user prompt
+│  Orchet chat    │ ────────────────────►
+└────────┬────────┘
+         │ 2. orchestrator picks tools from registered agents
+         ▼
+┌─────────────────┐     3. POST /tools/{name}
+│  Orchet gateway │ ────────────────────►  Your agent (this SDK)
+└─────────────────┘                          │
+                                             │ 4. attachSummary({ result, summary })
+         ┌───────────────────────────────────┘
+         ▼
+   Chat renders summary; orchestrator gets full result for next turn
 ```
 
-Orchet's router uses these helpers at boot to build the LLM tool list and at runtime to validate money-moving tool calls.
+## Scaffold a new agent
 
-## Versioning
+Use [`@orchet/agent-cli`](https://github.com/Orchet-AI/orchet-agent-cli) — generates a working Next.js + SDK skeleton from a vendor OpenAPI spec or from a built-in template.
 
-Follows semver. Breaking changes to the contract are major bumps and require every agent to re-pin. Agents pin on `^X.Y` in their own `package.json`.
+```bash
+npx @orchet/agent-cli
+```
+
+## Production examples
+
+These specialist agents are built with this SDK:
+
+- [orchet-lumo-rentals](https://github.com/Orchet-AI/orchet-lumo-rentals) — South India self-drive rentals
+- [orchet-splitwise-agent](https://github.com/Orchet-AI/orchet-splitwise-agent) — Splitwise OAuth2 + REST
+- [orchet-plaid-investments](https://github.com/Orchet-AI/orchet-plaid-investments) — Read-only portfolio via Plaid
+
+## Development
+
+```bash
+npm install
+npm run typecheck    # tsc --noEmit
+npm run build        # tsc -p tsconfig.json → dist/
+npm run smoke        # smoke tests (trips + cancellation)
+npm test             # build + smoke
+```
+
+Smoke tests live in `scripts/smoke-*.mjs` and exercise the full encode/decode round-trip without spinning up a server.
+
+## License
+
+Apache-2.0 © Lumo Technologies / Orchet
+
+## Links
+
+- **Docs:** [orchet.ai/developer](https://orchet.ai/developer)
+- **Marketplace:** [orchet.ai/store](https://orchet.ai/store)
+- **CLI:** [@orchet/agent-cli](https://github.com/Orchet-AI/orchet-agent-cli)
+- **Issues:** [github.com/Orchet-AI/orchet-agent-sdk/issues](https://github.com/Orchet-AI/orchet-agent-sdk/issues)
